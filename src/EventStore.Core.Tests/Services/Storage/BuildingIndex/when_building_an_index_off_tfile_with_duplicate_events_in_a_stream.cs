@@ -135,7 +135,8 @@ namespace EventStore.Core.Tests.Services.Storage.BuildingIndex
                                       additionalCommitChecks: PerformAdditionalCommitChecks,
                                       metastreamMaxCount: MetastreamMaxCount,
                                       hashCollisionReadLimit: Opts.HashCollisionReadLimitDefault,
-                                      skipIndexScanOnReads: Opts.SkipIndexScanOnReadsDefault);
+                                      skipIndexScanOnReads: Opts.SkipIndexScanOnReadsDefault,
+                                      replicationCheckpoint: _db.Config.ReplicationCheckpoint);
 
 
             ReadIndex.Init(chaserCheckpoint.Read());
@@ -165,7 +166,8 @@ namespace EventStore.Core.Tests.Services.Storage.BuildingIndex
                                       additionalCommitChecks: PerformAdditionalCommitChecks,
                                       metastreamMaxCount: MetastreamMaxCount,
                                       hashCollisionReadLimit: Opts.HashCollisionReadLimitDefault,
-                                      skipIndexScanOnReads: Opts.SkipIndexScanOnReadsDefault);
+                                      skipIndexScanOnReads: Opts.SkipIndexScanOnReadsDefault,
+                                      replicationCheckpoint: _db.Config.ReplicationCheckpoint);
 
             ReadIndex.Init(chaserCheckpoint.Read());
         }
