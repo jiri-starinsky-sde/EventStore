@@ -17,7 +17,7 @@ namespace EventStore.Core.Services.Replication
         private readonly IPublisher _publisher;
         private readonly IEnvelope _busEnvelope;
         private readonly ICheckpoint _replicationCheckpoint;
-        private readonly TimeSpan TimeoutPeriod = new TimeSpan(100);
+        private readonly TimeSpan TimeoutPeriod = TimeSpan.FromMilliseconds(100);
 
         private long _lastReplicationCheckpoint;
         private Dictionary<long, List<Message>> _messages;

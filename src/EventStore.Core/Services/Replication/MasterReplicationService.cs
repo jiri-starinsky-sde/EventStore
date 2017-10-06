@@ -105,6 +105,11 @@ namespace EventStore.Core.Services.Replication
                 _db.Config.ReplicationCheckpoint.Write(-1);
             }
 
+            if(_state == VNodeState.Master){
+                _commitAcks.Clear();
+                _commitAcksLinkedList.Clear();
+            }
+
             if (message.State == VNodeState.ShuttingDown)
                 _stop = true;
         }
@@ -200,6 +205,8 @@ namespace EventStore.Core.Services.Replication
 
         public void Handle(StorageMessage.CommitAck message)
         {
+            if(_state != VNodeState.Master) return;
+            
             var checkpoint = _db.Config.ReplicationCheckpoint.ReadNonFlushed();
             if(message.LogPosition <= checkpoint) return;
 
