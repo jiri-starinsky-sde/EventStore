@@ -20,7 +20,7 @@ namespace EventStore.Core.Services.Replication
         private readonly TimeSpan TimeoutPeriod = new TimeSpan(100);
 
         private long _lastReplicationCheckpoint;
-        private SortedDictionary<long, List<Message>> _messages;
+        private Dictionary<long, List<Message>> _messages;
 
         public ReplicationCheckpointFilter(IPublisher outputBus, IPublisher publisher, ICheckpoint replicationCheckpoint)
         {
@@ -28,7 +28,7 @@ namespace EventStore.Core.Services.Replication
             _publisher = publisher;
             _replicationCheckpoint = replicationCheckpoint;
             _busEnvelope = new PublishEnvelope(_publisher);
-            _messages = new SortedDictionary<long, List<Message>>();
+            _messages = new Dictionary<long, List<Message>>();
             _publisher.Publish(TimerMessage.Schedule.Create(TimeoutPeriod, _busEnvelope, new ReplicationMessage.ReplicationCheckTick()));
         }
 
