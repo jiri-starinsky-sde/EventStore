@@ -56,8 +56,8 @@ namespace EventStore.Core.Services.Replication
         private readonly QueueStatsCollector _queueStats = new QueueStatsCollector("Master Replication Service");
 
         private readonly ConcurrentDictionary<Guid, ReplicaSubscription> _subscriptions = new ConcurrentDictionary<Guid, ReplicaSubscription>();
-        private readonly Dictionary<Guid, List<StorageMessage.CommitAck>> _commitAcks = new Dictionary<Guid, List<StorageMessage.CommitAck>>();
-        
+        private readonly Dictionary<Guid, Tuple<List<StorageMessage.CommitAck>, LinkedListNode<StorageMessage.CommitAck> > > _commitAcks = new Dictionary<Guid, Tuple< List<StorageMessage.CommitAck>,  LinkedListNode<StorageMessage.CommitAck> > >();
+        private readonly LinkedList<StorageMessage.CommitAck> _commitAcksLinkedList = new LinkedList<StorageMessage.CommitAck>();
         private volatile VNodeState _state = VNodeState.Initializing;
 
         private readonly Stopwatch _stopwatch = Stopwatch.StartNew();
@@ -201,26 +201,38 @@ namespace EventStore.Core.Services.Replication
         public void Handle(StorageMessage.CommitAck message)
         {
             var checkpoint = _db.Config.ReplicationCheckpoint.ReadNonFlushed();
-            if(message.LogPosition < checkpoint) return;
+            if(message.LogPosition <= checkpoint) return;
 
-            List<StorageMessage.CommitAck> commits;
-            if(_commitAcks.TryGetValue(message.CorrelationId, out commits))
+            Tuple<List<StorageMessage.CommitAck>, LinkedListNode<StorageMessage.CommitAck> > commitAckTuple;
+            if(_commitAcks.TryGetValue(message.CorrelationId, out commitAckTuple))
             {
-                commits.Add(message);
-                if(commits.Count >= _clusterSize / 2 + 1)
+                var commitAckList = commitAckTuple.Item1;
+                commitAckList.Add(message);
+                if(commitAckList.Count >= _clusterSize / 2 + 1)
                 {
                     _db.Config.ReplicationCheckpoint.Write(message.LogPosition);
-                    var commitAcksToRemove = _commitAcks.Where(x => x.Value.Any(y => y.LogPosition <= message.LogPosition))
-                                                .Select(z => z.Key).ToList();
-                    foreach(var ca in commitAcksToRemove)
-                    {
-                        _commitAcks.Remove(ca);
-                    }
+                    
+                    //remove all commit acks having LogPosition <= message.LogPosition which are before current node in the linked list:
+                    //most of the time, the commit acks will be received in order of LogPosition, so the commit ack will be first item in the linked list and will be removed in a single iteration
+                    //if we have an item with LogPosition > message.LogPosition before the commit ack (previous items in linked list), we keep it (it'll be removed later when it's time has come)
+                    //if we have an item with LogPosition <= message.LogPosition after the commit ack (next items in linked list), it will stay in the linked list and be removed next time a message with larger LogPosition is received.
+                    var curNode = commitAckTuple.Item2;
+                    do{
+                        if(curNode.Value.LogPosition <= message.LogPosition){
+                            _commitAcks.Remove(curNode.Value.CorrelationId);
+                            _commitAcksLinkedList.Remove(curNode);
+                        }
+                        curNode = curNode.Previous;
+                    } while(curNode != null);
                 }
             }
             else
             {
-                _commitAcks.Add(message.CorrelationId, new List<StorageMessage.CommitAck>{ message });
+                var commitAckList = new List<StorageMessage.CommitAck>{ message };
+                var commitAckLinkedListNode = _commitAcksLinkedList.AddLast(message);
+
+                commitAckTuple = new Tuple<List<StorageMessage.CommitAck>, LinkedListNode<StorageMessage.CommitAck> > (commitAckList,commitAckLinkedListNode);
+                _commitAcks.Add(message.CorrelationId, commitAckTuple);
             }
         }
 
