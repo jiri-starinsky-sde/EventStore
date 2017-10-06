@@ -17,8 +17,9 @@ namespace EventStore.Core.Services.Replication
         private readonly IPublisher _publisher;
         private readonly IEnvelope _busEnvelope;
         private readonly ICheckpoint _replicationCheckpoint;
-        private readonly TimeSpan TimeoutPeriod = new TimeSpan(1000);
+        private readonly TimeSpan TimeoutPeriod = new TimeSpan(100);
 
+        private long _lastReplicationCheckpoint;
         private SortedDictionary<long, List<Message>> _messages;
 
         public ReplicationCheckpointFilter(IPublisher outputBus, IPublisher publisher, ICheckpoint replicationCheckpoint)
@@ -33,12 +34,8 @@ namespace EventStore.Core.Services.Replication
 
         public void Handle(StorageMessage.EventCommitted message)
         {
-            var replChk = _replicationCheckpoint.ReadNonFlushed();
             Enqueue(message, message.CommitPosition);
-            if (message.CommitPosition <= replChk)
-            {
-                HandleMessages();
-            }
+            HandleMessages();
         }
 
         public void Handle(ReplicationMessage.ReplicationCheckTick message)
@@ -62,6 +59,9 @@ namespace EventStore.Core.Services.Replication
         private void HandleMessages()
         {
             var replChk = _replicationCheckpoint.ReadNonFlushed();
+            if(replChk == _lastReplicationCheckpoint) return;
+
+            _lastReplicationCheckpoint = replChk;
             var messagesToHandle = _messages.Where(x => x.Key <= replChk).ToList();
             foreach(var m in messagesToHandle)
             {

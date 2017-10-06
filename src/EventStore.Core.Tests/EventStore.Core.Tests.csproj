@@ -703,6 +703,7 @@
     <Compile Include="ClientAPI\catch_up_subscription_to_stream_handles_non_replicated_events.cs" />
     <Compile Include="Services\Replication\CheckpointFilter\when_processing_event_committed_with_position_less_than_checkpoint_and_messages_waiting_in_filter.cs" />
     <Compile Include="ClientAPI\catch_up_subscription_to_all_handles_non_replicated_events.cs" />
+    <Compile Include="Services\Replication\CheckpointFilter\when_processing_event_committed_with_multiple_pending_messages_and_checkpoint_has_changed.cs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\EventStore.ClientAPI.Embedded\EventStore.ClientAPI.Embedded.csproj">
