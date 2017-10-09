@@ -113,7 +113,7 @@ namespace EventStore.Core.Services
             {
                 var lastEventNumber = msg.EventStreamId.IsEmptyString()
                                                 ? (long?) null
-                                                : _readIndex.GetStreamLastEventNumber(msg.EventStreamId);
+                                                : GetStreamLastEventNumber(msg.EventStreamId);
                 var lastCommitPos = _readIndex.LastCommitPosition;
                 SubscribeToStream(msg.CorrelationId, msg.Envelope, msg.ConnectionId, msg.EventStreamId, 
                                   msg.ResolveLinkTos, lastCommitPos, lastEventNumber);
@@ -129,6 +129,16 @@ namespace EventStore.Core.Services
         public void Handle(ClientMessage.UnsubscribeFromStream message)
         {
             UnsubscribeFromStream(message.CorrelationId);
+        }
+
+        private long GetStreamLastEventNumber(string eventStreamId)
+        {
+            var read = _readIndex.ReadStreamEventsBackward(eventStreamId, -1, 1);
+            if (read.Result == Storage.ReaderIndex.ReadStreamResult.Success)
+            {
+                return read.LastEventNumber;
+            }
+                return _readIndex.GetStreamLastEventNumber(eventStreamId);
         }
 
         private void SubscribeToStream(Guid correlationId, IEnvelope envelope, Guid connectionId,
