@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using EventStore.Core.Bus;
+using EventStore.Core.Messages;
 using EventStore.Core.Services.Replication;
 using EventStore.Core.Tests.Services.ElectionsService;
 using EventStore.Core.TransactionLog.Checkpoint;
@@ -28,6 +29,7 @@ namespace EventStore.Core.Tests.Services.Replication.MasterReplication
             Publisher = new InMemoryBus("publisher");
             TcpSendPublisher = new InMemoryBus("tcpSendPublisher");
             Service = new MasterReplicationService(Publisher, MasterId, Db, TcpSendPublisher, new FakeEpochManager(), ClusterSize);
+            Service.Handle(new SystemMessage.BecomeMaster(Guid.NewGuid(),Guid.NewGuid()));
 
             When();
         }
