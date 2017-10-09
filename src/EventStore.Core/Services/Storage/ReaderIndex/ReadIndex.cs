@@ -15,6 +15,7 @@ namespace EventStore.Core.Services.Storage.ReaderIndex
     public class ReadIndex : IDisposable, IReadIndex
     {
         public long LastCommitPosition { get { return _indexCommitter.LastCommitPosition; } }
+        public long LastReplicatedPosition { get {return _replicationCheckpoint.ReadNonFlushed(); } }
         public IIndexWriter IndexWriter { get { return _indexWriter; } }
         public IIndexCommitter IndexCommitter { get { return _indexCommitter; } }
 
@@ -23,6 +24,7 @@ namespace EventStore.Core.Services.Storage.ReaderIndex
         private readonly IIndexWriter _indexWriter;
         private readonly IIndexCommitter _indexCommitter;
         private readonly IAllReader _allReader;
+        private readonly ICheckpoint _replicationCheckpoint;
 
         public ReadIndex(IPublisher bus,
                          ObjectPool<ITransactionFileReader> readerPool,
@@ -48,6 +50,7 @@ namespace EventStore.Core.Services.Storage.ReaderIndex
             _indexWriter = new IndexWriter(_indexBackend, _indexReader);
             _indexCommitter = new IndexCommitter(bus, _indexBackend, _indexReader, tableIndex, additionalCommitChecks);
             _allReader = new AllReader(_indexBackend, _indexCommitter, replicationCheckpoint);
+            _replicationCheckpoint = replicationCheckpoint;
         }
 
         void IReadIndex.Init(long buildToPosition)

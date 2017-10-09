@@ -239,22 +239,29 @@ namespace EventStore.Core.Services.Storage.ReaderIndex
                 var allRecords = recordsQuery.Reverse().Select(x => new EventRecord(x.Version, x.Prepare)).ToArray();
                 var replicatedRecords = allRecords.Where(x => IsReplicated(x.LogPosition)).ToArray();
                 
-                if(replicatedRecords.Length==0){
-                    // no records to return
+                if(replicatedRecords.Length == 0 && allRecords.Length != 0)
+                {
+                    // No replicated records
                     long nextEventNumber = fromEventNumber;
-                    if(fromEventNumber == 0){
-                        return new IndexReadStreamResult(fromEventNumber, maxCount, ReadStreamResult.NoStream, metadata, ExpectedVersion.NoStream);
-                    }
-                    else{ //fromEventNumber > 0
-                        var isEndOfStream = nextEventNumber - 1 >= lastEventNumber;                 
-                        return new IndexReadStreamResult(fromEventNumber, maxCount, IndexReadStreamResult.EmptyRecords, metadata, nextEventNumber, lastEventNumber, isEndOfStream);
-                    }
-                }
-                else{ //replicatedRecords.Length > 0
-                    //we have some replicated records
-                    long nextEventNumber = replicatedRecords[replicatedRecords.Length - 1].EventNumber + 1;
-                    var isEndOfStream = nextEventNumber - 1 >= lastEventNumber;
+                    var isEndOfStream = true;
+                    lastEventNumber = fromEventNumber;
                     return new IndexReadStreamResult(fromEventNumber, maxCount, replicatedRecords, metadata, nextEventNumber, lastEventNumber, isEndOfStream);
+                }
+                else
+                {
+                    long nextEventNumber;
+                    var isEndOfStream = endEventNumber >= lastEventNumber;
+                    if (replicatedRecords.Length > 0)
+                    {
+                        nextEventNumber = replicatedRecords[replicatedRecords.Length - 1].EventNumber + 1;
+                        lastEventNumber = isEndOfStream ? replicatedRecords.Last().EventNumber : lastEventNumber;
+                    }
+                    else
+                    {
+                        nextEventNumber = Math.Min(endEventNumber + 1, lastEventNumber + 1);
+                    }
+                    return new IndexReadStreamResult(endEventNumber, maxCount, replicatedRecords, metadata,
+                                                     nextEventNumber, lastEventNumber, isEndOfStream);
                 }
             }
         }
